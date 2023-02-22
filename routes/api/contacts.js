@@ -1,15 +1,11 @@
 const express = require('express');
-const joi = require('joi');
 
 const router = express.Router();
 
 const contacts = require('../../models/contacts');
 
-const addSchema = joi.object({
-  name: joi.string().required(),
-  email: joi.string().required(),
-  phone: joi.string().required(),
-});
+const validate = require('../../helpers/schemaValidate');
+const requestError = require('../../helpers/RequestEroor');
 
 router.get('/', async (req, res, next) => {
   try {
@@ -24,7 +20,7 @@ router.get('/:contactId', async (req, res, next) => {
   try {
     const data = await contacts.getContactById(req.params.contactId);
 
-    if (!data) return res.status(404).json({ message: 'Not found' });
+    if (!data) throw requestError(404, 'Not found');
 
     res.status(200).json(data);
   } catch (error) {
@@ -34,9 +30,7 @@ router.get('/:contactId', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { error } = addSchema.validate(req.body);
-
-    if (error) return res.status(400).json({ message: 'missing required name field' });
+    if (!validate(req.body)) throw requestError(400, 'missing required name field');
 
     const data = await contacts.addContact(req.body);
     res.status(201).json(data);
@@ -49,7 +43,7 @@ router.delete('/:contactId', async (req, res, next) => {
   try {
     const data = await contacts.removeContact(req.params.contactId);
 
-    if (!data) return res.status(404).json({ message: 'Not found' });
+    if (!data) throw requestError(404, 'Not found');
     res.status(200).json({ message: 'contact deleted' });
   } catch (error) {
     next(error);
@@ -58,16 +52,16 @@ router.delete('/:contactId', async (req, res, next) => {
 
 router.put('/:contactId', async (req, res, next) => {
   try {
-    const { error } = addSchema.validate(req.body);
-
-    if (error) return res.status(400).json({ message: 'missing fields' });
+    if (!validate(req.body)) throw requestError(400, 'Missing fields');
 
     const data = await contacts.updateContact(req.params.contactId, req.body);
 
-    if (!data) return res.status(404).json({ message: 'Not found' });
+    if (!data) throw requestError(404, 'Not found');
 
     res.status(200).json(data);
-  } catch (error) {}
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = router;
