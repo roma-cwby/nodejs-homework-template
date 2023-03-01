@@ -1,13 +1,9 @@
-const joi = require('joi');
+const { addSchema } = require('../models/contact');
+const { updateFavoriteSchema } = require('../models/contact');
 
-const addSchema = joi.object({
-  name: joi.string().required(),
-  email: joi.string().required(),
-  phone: joi.string().required(),
-});
-
-function validate(sch) {
-  if (addSchema.validate(sch).error) return null;
+function validate(sch, type = null) {
+  if (!type && addSchema.validate(sch).error) return null;
+  else if (type === 'favorite' && updateFavoriteSchema.validate(sch).error) return null;
   return 1;
 }
 
