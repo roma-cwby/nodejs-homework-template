@@ -1,10 +1,15 @@
-const { addSchema } = require('../models/contact');
-const { updateFavoriteSchema } = require('../models/contact');
+const RequestEroor = require('../helpers/RequestEroor');
 
-function validate(sch, type = null) {
-  if (!type && addSchema.validate(sch).error) return null;
-  else if (type === 'favorite' && updateFavoriteSchema.validate(sch).error) return null;
-  return 1;
-}
+const validateBody = schema => {
+  const func = (req, res, next) => {
+    const { error } = schema.validate(req.body);
+    if (error) {
+      next(RequestEroor(400, error.message));
+    }
+    next();
+  };
 
-module.exports = validate;
+  return func;
+};
+
+module.exports = validateBody;
