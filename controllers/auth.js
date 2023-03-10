@@ -2,14 +2,20 @@ const { User } = require('../models/users');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const requestError = require('../helpers/RequestEroor');
+const gravatar = require('gravatar');
+const path = require('path');
+const fs = require('fs/promises');
+const jimp = require('jimp');
 
 const { SECRET_KEY } = process.env;
+const avatarsDir = path.join(__dirname, '../', 'public', 'avatars');
 
 const register = async (req, res, next) => {
   try {
     const hashPass = await bcrypt.hash(req.body.password, 10);
+    const avatarURL = gravatar.url(req.body.email);
 
-    const newUser = await User.create({ ...req.body, password: hashPass });
+    const newUser = await User.create({ ...req.body, password: hashPass, avatarURL });
 
     res.status(201).json(newUser);
   } catch (error) {
@@ -40,21 +46,56 @@ const login = async (req, res, next) => {
 };
 
 const current = async (req, res, next) => {
-  const { email, subscription } = req.user;
-  res.status(200).json({ email, subscription });
+  try {
+    const { email, subscription } = req.user;
+    res.status(200).json({ email, subscription });
+  } catch (error) {
+    next(error);
+  }
 };
 
 const logout = async (req, res, next) => {
-  const { _id } = req.user;
-  await User.findByIdAndUpdate(_id, { token: '' });
-  res.status(204).json({});
+  try {
+    const { _id } = req.user;
+    await User.findByIdAndUpdate(_id, { token: '' });
+    res.status(204).json({});
+  } catch (error) {
+    next(error);
+  }
 };
 
 const subscription = async (req, res, next) => {
-  const { _id } = req.user;
-  const { subscription } = req.body;
-  await User.findByIdAndUpdate(_id, { subscription });
-  res.status(200).json(req.body);
+  try {
+    const { _id } = req.user;
+    const { subscription } = req.body;
+    await User.findByIdAndUpdate(_id, { subscription });
+    res.status(200).json(req.body);
+  } catch (error) {
+    next(error);
+  }
 };
 
-module.exports = { register, login, current, logout, subscription };
+const avatars = async (req, res, next) => {
+  try {
+    const { path: tempUpload, originalname } = req.file;
+
+    const fileName = `${req.user._id}_${originalname}`;
+
+    const resultUpload = path.join(avatarsDir, fileName);
+    await fs.rename(tempUpload, resultUpload);
+
+    const img = await jimp.read(resultUpload);
+    img.resize(250, 250).write(resultUpload);
+
+    const avatarURL = path.join('avatars', fileName);
+    await User.findByIdAndUpdate(req.user._id, { avatarURL });
+
+    res.status(200).json({
+      avatarURL,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, current, logout, subscription, avatars };
